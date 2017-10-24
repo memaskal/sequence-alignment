@@ -1,21 +1,40 @@
 # Smith Waterman - local sequence alignment
 
-This project was a university assignment on the course of parallel processing. Given the serial [Smith Waterman](https://en.wikipedia.org/wiki/Smith%E2%80%93Waterman_algorithm) algorithm, a parallel implementation was created preserving the same input-output constraints. The parallelism was achieved using the [OpenMp](http://openmp.org/wp/) API for multi-threaded applications and vectorization for finner tunning. 
+A simple parallel implementation of the [Smith Waterman](https://en.wikipedia.org/wiki/Smith%E2%80%93Waterman_algorithm)'s algorithm, created as a university assignment. Parallelism was achieved using the [OpenMp](http://openmp.org/wp/) API for multi-threaded applications and AVX vectorization for finer tuning. 
 
 ## Algorithm Design
 
-This implementation uses the wavefront method, for anti-diagonal calculation of the score matrix. The last, is a `NxM` sized array of floats, where `N,M` are the sizes of the input sequences. The calculation of the score matrix happens in blocks, of variable size. The blocking size is determined  by the number of threads available, as well as sequence sizes and other constants calculated through benchmarking. Each block is computed by a single thread, using OpenMP Tasks and vectorization instructions when applicable. Score matrix calculation, max sequence value and backtracking operations, have been altered for best performance. For more information on the desciscions of this design and overall walkthrought on the development check the `report.pdf`, currently in greek.
+This implementation uses the wave-front method, for anti-diagonal calculation of the score matrix. The last, is a `NxM` float matrix, where `N,M` are the lengths of the two input sequences. The score matrix calculation, happens in blocks of variable size. The blocking size, is determined by the number of threads available, as well as the sequences' size and other fine-tuned constants defined through benchmarking on our machine.
 
-## Usage
+The computational phase follows a consumer producer pattern. The master thread, produces OpenMP Tasks for each block in the score matrix, which are later consumed by working threads using AVX vectorization instructions, when applicable, to speed-up the calculations. For more information on the decisions of this design and overall walk-through on the development check the project's [report](./report.pdf).
 
-The `data` directory includes some test input sequences for the application. Simply run the `compare.sh` script on the main directory of this repo, for the #tests `0-2`, to benchmark the two implementations. 
+## Results
+
+Each of these implementation were tested with no optimization `-O0` and all optimizations `-O3` flags, using one to four threads (systems maximum). The table bellow contains the speed-up measurement against the simple serial implementation:
+
+| # Threads    |   1 	|   2	|   4 |
+| ---	 |  :-:	    |:-:	| :-:  |	
+| OpenMP-O0  	    | 1.15 | 2.12 | 2.63 |
+| OpenMP-O3 	    | 1.58 | 3.00 | 3.67 | 
+| OpenMP-O0 + AVX  	| 2.93 | 5.41 | 6.74 |
+| OpenMP-O3 + AVX  	| 3.48 | 6.18 | 8.14 |
+
+## Testing
+
+Input test sequences are provided, in the [data](./data) directory of this project. To compare the execution of the original and the parallel implementation, simply run the `compare.sh` script from the root directory, of this project. This script, takes as argument a number #`0-2`, which represent small, medium and a large test cases.  
+
 ``` shell
+# Test on a medium length sequence
 $ ./compare.sh 1
 ```
-Troubleshooting: setting the `__SIMD__` flag to zero, will resolve vectorization related errors, on systems which don't support [Intel AVX Intrinsics](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=AVX). The build requirements are listed below:
 
+## Compiling 
+
+To compile each implementation, simply run the `make` command. The build requirements are listed below:
 * g++ compiler with OpenMp v4.0 or greater
 * AVX enabled CPU
+
+> Troubleshooting: setting the `__SIMD__` flag to zero, will resolve vectorization related errors, on systems which don't support [Intel AVX Intrinsics](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=AVX).
 
 ## Disclaimer 
 
